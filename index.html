@@ -22,38 +22,48 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-// Placeholder sheets array, replace CSV links with your published CSV URLs
+// Add your published CSV links here
 const sheets = [
-  { name: 'Sheet1', csv: 'CSV_LINK_FOR_SHEET1' },
-  { name: 'Sheet2', csv: 'CSV_LINK_FOR_SHEET2' },
-  { name: 'Sheet3', csv: 'CSV_LINK_FOR_SHEET3' }
+  { name: 'Sheet1', csv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9LQk6xX0qM1bK-hK45mlrN2MvhjZ8G8tkYJ1cP9JtZTt-m0TLo2z6hPbT1Loe7OexQRRnm0nD3jxY/pub?output=csv' },
+  // Add more sheets like this:
+  // { name: 'Sheet2', csv: 'YOUR_CSV_LINK' }
 ];
 
 async function loadAllSheets() {
   for (const sheet of sheets) {
-    const res = await fetch(sheet.csv);
-    const text = await res.text();
-    const rows = text.trim().split('\n').map(r => r.split(','));
+    try {
+      const res = await fetch(sheet.csv);
+      if (!res.ok) throw new Error('Failed to fetch CSV');
+      const text = await res.text();
+      const rows = text.trim().split('\n').map(r => r.split(','));
 
-    // Create container for each sheet
-    const container = document.createElement('div');
-    container.innerHTML = `<h2>${sheet.name}</h2><table id="${sheet.name}-table" class="display"></table><canvas id="${sheet.name}-chart"></canvas>`;
-    document.body.appendChild(container);
+      // Create container
+      const container = document.createElement('div');
+      container.innerHTML = `<h2>${sheet.name}</h2><table id="${sheet.name}-table" class="display"></table><canvas id="${sheet.name}-chart"></canvas>`;
+      document.body.appendChild(container);
 
-    // Populate table
-    $(`#${sheet.name}-table`).DataTable({
-      data: rows.slice(1),
-      columns: rows[0].map(h => ({ title: h }))
-    });
+      // Populate table
+      $(`#${sheet.name}-table`).DataTable({
+        data: rows.slice(1),
+        columns: rows[0].map(h => ({ title: h }))
+      });
 
-    // Chart: first column as labels, second column as data
-    const labels = rows.slice(1).map(r => r[0]);
-    const data = rows.slice(1).map(r => parseFloat(r[1] || 0));
-    new Chart(document.getElementById(`${sheet.name}-chart`), {
-      type: 'bar',
-      data: { labels, datasets: [{ label: rows[0][1], data, backgroundColor: 'rgba(54,162,235,0.5)' }] },
-      options: { responsive: true, plugins: { title: { display: true, text: sheet.name } } }
-    });
+      // Prepare chart: first column = labels, second column = values
+      const labels = rows.slice(1).map(r => r[0]);
+      const data = rows.slice(1).map(r => parseFloat(r[1] || 0));
+      new Chart(document.getElementById(`${sheet.name}-chart`), {
+        type: 'bar',
+        data: { labels, datasets: [{ label: rows[0][1], data, backgroundColor: 'rgba(54,162,235,0.5)' }] },
+        options: { responsive: true, plugins: { title: { display: true, text: sheet.name } } }
+      });
+
+    } catch (err) {
+      console.error(`Error loading sheet ${sheet.name}:`, err);
+      const errorDiv = document.createElement('div');
+      errorDiv.style.color = 'red';
+      errorDiv.textContent = `Failed to load sheet: ${sheet.name}`;
+      document.body.appendChild(errorDiv);
+    }
   }
 }
 
